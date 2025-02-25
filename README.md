@@ -10,6 +10,17 @@ The classic algorithm takes N points and K initial clusters and iteratively calc
 
 A popular use for the K-Means algorithm is color quantization. A general image has thousands of different colors, and for a number of reasons it can be desirable to limit it to only a few. Making each color a vector and each pixel a data point, we can perform the K-Means algorithm to limit the number of colors in an image to the number of clusters used. On this project, only color quantization was used to test implementations.
 
+## Benchmarks
+
+Benchmarks for the image nature.jpg: N = 756000, D = 3. 4 cores were used in code that uses multiprocessing
+| K = 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 64, 128, 256 | K = 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 64 |
+|-|-|
+|![speedup_all](https://github.com/user-attachments/assets/d26bf61d-5192-4a73-9dad-e8c2b7716da9) | ![speedup_64](https://github.com/user-attachments/assets/73a36590-da81-4b85-90a6-fe8d3a930776) |
+|![tpi_all](https://github.com/user-attachments/assets/c5aa8934-8dc6-4862-9b42-833f1a376660) | ![tpi_64](https://github.com/user-attachments/assets/b9fb5aa4-326d-41bb-a152-64d382b79389) |
+
+It's weird to me how close the graphs for SIMD and Scikit-Learn are. The natural thing to think is that Scikit-Learn is not using multiprocessing and just doing something similar to what I'm doing, but I don't believe that's it, because my CPU usage pretty clearly goes to 100% when running the Scikit-Learn code, so it must be using all cores. I really think it's just a coincidence.
+
+
 ## Optimizations
 
 This project optimizes K-Means **without modifying the classic algorithm**. Instead, it focuses on **efficient resource utilization** to improve performance. The two primary techniques used are:
