@@ -32,7 +32,7 @@ struct SIMDLloydIteration : LloydIteration {
 		int numVecs = (k + 7) / 8;
 
 		// prepare all the vectors we will be using (not exactly efficient but only done once per iteration)
-		// permuting the vectors in such a way that if permutedIndex1 % 8 < permutedIndex2 % 8 => index1 < index2
+		// permuting the vectors in such a way that index1 < index2 <=> permutedIndex1 % 8 < permutedIndex2 % 8
 		__m256* vecs = allocAVX(D * numVecs);
 
 		// fill vecs with infs
@@ -65,9 +65,7 @@ struct SIMDLloydIteration : LloydIteration {
 				__m256 dst = calculateDistances8x(points[i].data(), &vecs[j * D], D);
 
 				// update argmin and min distance in every slice
-				__m256 mask = _mm256_cmp_ps(minDistances, dst, _CMP_GT_OQ);
-				minIdxs = _mm256_blendv_ps(minIdxs, currIdx, mask);
-				minDistances = _mm256_min_ps(dst, minDistances);
+				updateArgmin(minIdxs, currIdx, minDistances, dst);
 
 				currIdx = _mm256_add_ps(currIdx, increment);
 			}
@@ -84,6 +82,7 @@ struct SIMDLloydIteration : LloydIteration {
 			// choose any, but just so this is equal to the scalar version, I "fixed" it with the permutations done above
 			int centroidIndex = (int) idxsArr[argminAVX(minDistances)];
 
+			// accumulate points assigned to given centroid to later get their mean
 			counts[centroidIndex]++;
 			for (int j = 0; j < D; ++j) {
 				newCenters[centroidIndex][j] += points[i][j];
