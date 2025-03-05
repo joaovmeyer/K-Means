@@ -43,28 +43,34 @@ Some notes on the benchmarks:
 
  - **Centroid initialization**: On all benchmarks, **centroid initialization was random** (since my crude implementation of k-means++ was too slow and I wanted to test big values of K).
  - **What's measured?** Benchmarks only include the iterative process of doing Lloyd's iteration until convergence or a **maximum of 50 iterations**, and things like **centroid initialization were not included**.
+ - **How it's measured?** Each benchmark code was executed **4 times** and the **mean of the results were used**.
  - **Speedup calculation**: I measured **average time per iteration** since other implementations often required a different number of iterations to converge. To ensure a fair comparison, I used the **same initial centroids across implementations**.
  - **Cores used**: Unless clearly stated, all multiprocessing code was executed on 4 cores.
  - **Notation**: N = number of data points, D = number of dimensions, K = number of clusters.
+
+All the c++ code was compiled with GCC 13.2.0 using the flags: `-std=c++17`, `-fopenmp`, `-march=native`, `-O2`.
+<br>
+The scikit-learn version used was 1.6.1.
 
 ---
 
 **Using image nature.jpg**: N = 756000, D = 3.
 | K = 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 64, 128, 256 | K = 1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 64 |
 |-|-|
-|![speedup_all](https://github.com/user-attachments/assets/d26bf61d-5192-4a73-9dad-e8c2b7716da9) | ![speedup_64](https://github.com/user-attachments/assets/73a36590-da81-4b85-90a6-fe8d3a930776) |
-|![tpi_all](https://github.com/user-attachments/assets/c5aa8934-8dc6-4862-9b42-833f1a376660) | ![tpi_64](https://github.com/user-attachments/assets/b9fb5aa4-326d-41bb-a152-64d382b79389) |
+| ![speedup_all](https://github.com/user-attachments/assets/7cf8fddf-2198-453c-8e06-2d8e6a825d80) | ![speedup_64](https://github.com/user-attachments/assets/c6d7db28-76d6-4ce2-a199-1f22adcdc562) |
+| ![tpi_all](https://github.com/user-attachments/assets/a21f90f3-3052-4c92-9f1c-979b6596737c) | ![tpi_64](https://github.com/user-attachments/assets/6362815d-464e-47df-8e16-c1e509368d4e)
+ |
 
-It's weird to me how close the graphs for SIMD and Scikit-Learn are. The natural thing to think is that Scikit-Learn is not using multiprocessing and just doing something similar to what I'm doing, but I don't believe that's it, because my CPU usage pretty clearly goes to 100% when running the Scikit-Learn code, so it must be using all cores. I really think it's just a coincidence.
+It's weird to me how close the graphs for SIMD and scikit-learn are. The natural thing to think is that scikit-learn is not using multiprocessing and just doing something similar to what I'm doing, but I don't believe that's it, because my CPU usage pretty clearly goes to 100% when running the scikit-learn code, so it must be using all cores. I really think it's just a coincidence.
 
 ---
 
 **Using image monkey.jpg**: N = 262144, D = 3, K = 16.
 | Time Per Iteration (ms) | Speedup |
 |-|-|
-| ![tpi_num_threads](https://github.com/user-attachments/assets/075594ba-ab43-4065-a8b6-fbd79215dde1) | ![speedup_num_threads](https://github.com/user-attachments/assets/e1874b7b-e28c-4dce-86ff-ca9180c169ba) |
+| ![tpi_num_threads](https://github.com/user-attachments/assets/2ebe62e7-ad84-4bd6-8f25-c60210d544cf) | ![speedup_num_threads](https://github.com/user-attachments/assets/0801e1e6-df18-48d5-9830-a6522a304979) |
 
-This shows that Scikit-Learn was indeed using **4 cores** before, and my implementation using SIMD can get similar results using **only 1 core**. When both are using the same number of cores, my implementation achieves **speedups of around 3x** in this example with K = 16. It's also nice to see that speedups grow linearly with the number of cores, as we expected.
+This shows that scikit-learn was indeed using **4 cores** before, and my implementation using SIMD can get similar results using **only 1 core**. When both are using the same number of cores, my implementation achieves **speedups of around 3x** in this example with K = 16. It's also nice to see that speedups grow linearly with the number of cores, as we expected.
 
 ## Disclaimers
 
@@ -74,4 +80,4 @@ Color quantization was chosen because it fits nicely the filtering algorithm usi
 
 Some inconsistencies can be found when using multiprocessing due to **different order of floating-point operations**, leading to slightly **different results each time** because of numerical instability, but this is **not a problem in general**.
 
-I don't know how fair it is to compare my results with Scikit-Learn, as not only it's a big library that has to worry about way more things than I did, but it's also in Python. I have close to no understanding on how to optimize a Python code, and it might be impossible to get similar results with the same techniques as I did, but still, 3x worse results **seems unjustified**, but I could be wrong.
+I don't know how fair it is to compare my results with scikit-learn, as not only it's a big library that has to worry about way more things than I did, but it's also in Python. I have close to no understanding on how to optimize a Python code, and it might be impossible to get similar results with the same techniques as I did, but still, 3x worse results **seems unjustified**, but I could be wrong.
