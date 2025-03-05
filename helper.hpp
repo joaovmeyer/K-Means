@@ -32,7 +32,7 @@ __m128 hminSSE(__m128 vec) {
 
 __m256 hminAVX(__m256 vec) {
 
-	vec = _mm256_min_ps(vec, _mm256_permute2f128_ps(vec, vec, 3)); // gets min of first 4 with last 4
+	vec = _mm256_min_ps(vec, _mm256_permute2f128_ps(vec, vec, 0b11)); // gets min of first 4 with last 4
 
 	// same idea as SSE
 	vec = _mm256_min_ps(vec, _mm256_permute_ps(vec, 0b01001110));
@@ -42,15 +42,21 @@ __m256 hminAVX(__m256 vec) {
 }
 
 
+void updateArgmin(__m256& minIdxs, __m256 currentIdxs, __m256& minDistances, __m256 currentDistances) {
+	__m256 mask = _mm256_cmp_ps(minDistances, currentDistances, _CMP_GT_OQ); // where new distance is smaller than min distance
+	minIdxs = _mm256_blendv_ps(minIdxs, currentIdxs, mask); // update index where distance is smaller
+	minDistances = _mm256_min_ps(currentDistances, minDistances); // update min distances
+}
+
 int argminAVX(__m256 vec) {
 
 	// example: vec = [5, 2, 3, 7, 11, 2, 4, 10]
-	// indices:        8  6  5  4   3  2  1   0 --> argmin = 2
+	// indices:        0  1  2  3   4  5  6   7 --> argmin = 1
 
 	__m256 minVal = hminAVX(vec); // minVal = [2, 2, 2, 2, 2, 2, 2, 2]
-	int mask = _mm256_movemask_ps(_mm256_cmp_ps(minVal, vec, _CMP_EQ_OQ)); // mask = 0b01000100 (1 where vec's element == minVal)
-	//                                                                                      ^
-	return __builtin_ctz(mask); // index of first bit set in mask  -------------------------| = 2
+	int mask = _mm256_movemask_ps(_mm256_cmp_ps(minVal, vec, _CMP_EQ_OQ)); // mask = 0b00100010 (1 where vec's element == minVal)
+	//                                                                                       ^
+	return __builtin_ctz(mask); // index of first bit set in mask  --------------------------| = 1
 }
 
 
@@ -65,14 +71,14 @@ void setValue(__m256& vec, float value, uint32_t index = 0) {
 
 	// index should be a compile-time constant
 	switch (index % 8) { // modulo by power of two is basically free
-		case 0: vec = _mm256_blend_ps(vec, _mm256_set1_ps(value), 1 << 0);
-		case 1: vec = _mm256_blend_ps(vec, _mm256_set1_ps(value), 1 << 1);
-		case 2: vec = _mm256_blend_ps(vec, _mm256_set1_ps(value), 1 << 2);
-		case 3: vec = _mm256_blend_ps(vec, _mm256_set1_ps(value), 1 << 3);
-		case 4: vec = _mm256_blend_ps(vec, _mm256_set1_ps(value), 1 << 4);
-		case 5: vec = _mm256_blend_ps(vec, _mm256_set1_ps(value), 1 << 5);
-		case 6: vec = _mm256_blend_ps(vec, _mm256_set1_ps(value), 1 << 6);
-		case 7: vec = _mm256_blend_ps(vec, _mm256_set1_ps(value), 1 << 7);
+		case 0: vec = _mm256_blend_ps(vec, _mm256_set1_ps(value), 1 << 0); break;
+		case 1: vec = _mm256_blend_ps(vec, _mm256_set1_ps(value), 1 << 1); break;
+		case 2: vec = _mm256_blend_ps(vec, _mm256_set1_ps(value), 1 << 2); break;
+		case 3: vec = _mm256_blend_ps(vec, _mm256_set1_ps(value), 1 << 3); break;
+		case 4: vec = _mm256_blend_ps(vec, _mm256_set1_ps(value), 1 << 4); break;
+		case 5: vec = _mm256_blend_ps(vec, _mm256_set1_ps(value), 1 << 5); break;
+		case 6: vec = _mm256_blend_ps(vec, _mm256_set1_ps(value), 1 << 6); break;
+		case 7: vec = _mm256_blend_ps(vec, _mm256_set1_ps(value), 1 << 7); break;
 	}
 }
 
