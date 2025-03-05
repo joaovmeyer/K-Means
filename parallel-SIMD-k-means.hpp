@@ -40,8 +40,8 @@ struct ParallelSIMDLloydIteration : LloydIteration {
 		#pragma omp parallel
 		{
 
-			vector<vector<float>> newCentersThread(k, vector<float>(D, 0.0f));
-			vector<float> countsThread(k, 0.0f);
+			std::vector<std::vector<float>> newCentersThread(k, std::vector<float>(D, 0.0f));
+			std::vector<float> countsThread(k, 0.0f);
 
 			#pragma omp for nowait
 			for (int i = 0; i < N; ++i) {
@@ -49,7 +49,7 @@ struct ParallelSIMDLloydIteration : LloydIteration {
 				const __m256 increment = _mm256_set1_ps(1.0f);
 				__m256 minIdxs = _mm256_mul_ps(_mm256_setr_ps(0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f), _mm256_set1_ps((float) numVecs));
 				
-				// first 8 distances can be calculated here to avoid an unnecessary cmp, blendv and min
+				// first 8 distances can be calculated here to avoid an unnecessary calls to updateArgmin
 				// this is actually important when K is small, and that's quite common in k-means
 				__m256 minDistances = calculateDistances8x(points[i].data(), &vecs[0], D);
 
@@ -62,9 +62,7 @@ struct ParallelSIMDLloydIteration : LloydIteration {
 					__m256 dst = calculateDistances8x(points[i].data(), &vecs[j * D], D);
 
 					// update argmin and min distance in every slice
-					__m256 mask = _mm256_cmp_ps(minDistances, dst, _CMP_GT_OQ);
-					minIdxs = _mm256_blendv_ps(minIdxs, currIdx, mask);
-					minDistances = _mm256_min_ps(dst, minDistances);
+					updateArgmin(minIdxs, currIdx, minDistances, dst);
 
 					currIdx = _mm256_add_ps(currIdx, increment);
 				}
@@ -81,12 +79,14 @@ struct ParallelSIMDLloydIteration : LloydIteration {
 				// choose any, but just so this is equal to the scalar version, I "fixed" it with the permutations done above
 				int centroidIndex = (int) idxsArr[argminAVX(minDistances)];
 
+				// accumulate points assigned to given centroid to later get their mean
 				countsThread[centroidIndex]++;
 				for (int j = 0; j < D; ++j) {
 					newCentersThread[centroidIndex][j] += points[i][j];
 				}
 			}
 
+			// accumulate results from all threads
 			#pragma omp critical
 			{
 				for (int j = 0; j < k; ++j) {
