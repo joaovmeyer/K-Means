@@ -56,78 +56,82 @@ private:
 template <typename T>
 std::ostream& operator << (std::ostream& os, const std::vector<T>& m) {
 
-	os << "[";
+    os << "[";
 
-	for (size_t j = 0; j < m.size(); ++j) {
-		os << m[j];
+    for (size_t j = 0; j < m.size(); ++j) {
+        os << m[j];
 
-		if (j + 1 < m.size()) {
-			os << ", ";
-		}
-	}
+        if (j + 1 < m.size()) {
+            os << ", ";
+        }
+    }
 
-	os << "]";
+    os << "]";
 
-	return os;
+    return os;
 }
 
 
 std::vector<std::vector<float>> getImageData(const string& src) {
 
-	int w, h, n;
-	unsigned char *img = stbi_load(src.c_str(), &w, &h, &n, 3);
+    int w, h, n;
+    unsigned char *img = stbi_load(src.c_str(), &w, &h, &n, 3);
 
-	if (img == NULL) {
-		exit(1);
-	}
+    if (img == NULL) {
+        exit(1);
+    }
 
-	vector<vector<float>> data; data.reserve(w * h);
+    vector<vector<float>> data; data.reserve(w * h);
 
-	for (int y = 0; y < h; ++y) {
-		for (int x = 0; x < w; ++x) {
-			data.push_back({
-				(float) img[(y * w + x) * 3 + 0], 
-				(float) img[(y * w + x) * 3 + 1], 
-				(float) img[(y * w + x) * 3 + 2]
-			});
-		}
-	}
+    for (int y = 0; y < h; ++y) {
+        for (int x = 0; x < w; ++x) {
+            data.push_back({
+                (float) img[(y * w + x) * 3 + 0], 
+                (float) img[(y * w + x) * 3 + 1], 
+                (float) img[(y * w + x) * 3 + 2]
+            });
+        }
+    }
 
-	stbi_image_free(img);
+    stbi_image_free(img);
 
-	return data;
+    return data;
 }
 
 
 
 
 std::vector<std::vector<float>> getRandomCentroids(const std::vector<std::vector<float>>& dataset, int k) {
-	std::vector<std::vector<float>> newCentroids; newCentroids.reserve(k);
+    std::vector<std::vector<float>> newCentroids; newCentroids.reserve(k);
 
-	for (int i = 0; i < k; ++i) {
-		newCentroids.push_back(rng::choice(dataset));
-	}
+    for (int i = 0; i < k; ++i) {
+        newCentroids.push_back(rng::choice(dataset));
+    }
 
-	return newCentroids;
+    return newCentroids;
 }
 
 
 template <class Method = BasicLloydIteration, typename = std::enable_if_t<std::is_base_of_v<LloydIteration, Method>>>
 double timePerIteration(const std::vector<std::vector<float>>& dataset, int k, const std::vector<std::vector<float>>& initialCentroids) {
 
-	KMeans model(k);
-	model.initializeCentroids(dataset); // needed for other stuff besides initializing centroids
-	model.centroids = initialCentroids;
+    KMeans model(k);
 
-	Timer timer{};
-	timer.start();
+    // needed for other stuff besides initializing centroids (I just removed the initialization itself for benchmarks)
+    model.initializeCentroids(dataset);
 
-	int iter = model.fit<Method>(50); // limit to 50 iterations so it never takes too long
+    // set centroids that will actually be used
+    model.centroids = initialCentroids;
 
-	timer.stop();
-	double timePerIteration = timer.elapsedMilliseconds() / ((double) iter);
-	
-	return timePerIteration;
+    Timer timer{};
+    timer.start();
+
+    int iter = model.fit<Method>(50); // limit to 50 iterations so it never takes too long
+
+    timer.stop();
+    double timePerIteration = timer.elapsedMilliseconds() / ((double) iter);
+    
+    return timePerIteration;
 }
 
 
@@ -139,80 +143,83 @@ double timePerIteration(const std::vector<std::vector<float>>& dataset, int k, c
 
 int main() {
 
-	string src;
-	cout << "Image src: "; cin >> src;
+    string src;
+    cout << "Image src: "; cin >> src;
 
-	std::vector<std::vector<float>> data = getImageData(src);
-
-
-
-	/********************************************************************
-	*																	*
-	*				benchmark on different values of K: 				*
-	*																	*
-	********************************************************************/
-
-
-//	std::vector<int> Ks = { 16 };
-
-	// just to print the same initial centroids and use them in other implementations
-/*	for (auto& k : Ks) {
-		rng::setSeed(123);
-		cout << getRandomCentroids(data, k) << ", ";
-	}*/
-
-
-/*	std::vector<double> timesBasic;
-	std::vector<double> timesSIMD;
-	std::vector<double> timesOMP;
-	std::vector<double> timesOMPSIMD;
-
-	for (auto& k : Ks) {
-		rng::setSeed(123);
-		std::vector<std::vector<float>> initialCentroids = getRandomCentroids(data, k);
-
-		timesBasic.push_back(timePerIteration<BasicLloydIteration>(data, k, initialCentroids));
-		timesSIMD.push_back(timePerIteration<SIMDLloydIteration>(data, k, initialCentroids));
-		timesOMP.push_back(timePerIteration<ParallelLloydIteration>(data, k, initialCentroids));
-		timesOMPSIMD.push_back(timePerIteration<ParallelSIMDLloydIteration>(data, k, initialCentroids));
-	}
-
-	cout << "Ks: " << Ks << "\n";
-	cout << "timesBasic: " << timesBasic << "\n";
-	cout << "timesSIMD: " << timesSIMD << "\n";
-	cout << "timesOMP: " << timesOMP << "\n";
-	cout << "timesOMPSIMD: " << timesOMPSIMD << "\n";*/
+    std::vector<std::vector<float>> data = getImageData(src);
 
 
 
-
-	/********************************************************************
-	*																	*
-	*			  benchmark on different number of threads 				*
-	*																	*
-	********************************************************************/
-
-
-	std::vector<int> numThreads = { 1, 2, 3, 4 };
-	int K = 16;
-
-	std::vector<double> timesOMP;
-	std::vector<double> timesOMPSIMD;
-
-	for (auto& k : numThreads) {
-		rng::setSeed(123);
-		std::vector<std::vector<float>> initialCentroids = getRandomCentroids(data, K);
-
-		omp_set_num_threads(k);
-
-		timesOMP.push_back(timePerIteration<ParallelLloydIteration>(data, K, initialCentroids));
-		timesOMPSIMD.push_back(timePerIteration<ParallelSIMDLloydIteration>(data, K, initialCentroids));
-	}
-
-	cout << "num threads: " << numThreads << "\n";
-	cout << "timesOMP: " << timesOMP << "\n";
-	cout << "timesOMPSIMD: " << timesOMPSIMD << "\n";
+    /********************************************************************
+    *                                                                   *
+    *               benchmark on different values of K:                 *
+    *                                                                   *
+    ********************************************************************/
 
 
-	return 0;
+    std::vector<int> Ks = { 2, 3, 4, 6, 8, 12, 16, 24, 32, 64, 128, 256 };
+
+    // just to print the same initial centroids and use them in other implementations
+/*  rng::setSeed(123);
+    for (auto& k : Ks) {
+        cout << getRandomCentroids(data, k) << ", ";
+    }
+*/
+
+    std::vector<double> timesBasic;
+    std::vector<double> timesSIMD;
+    std::vector<double> timesOMP;
+    std::vector<double> timesOMPSIMD;
+
+    rng::setSeed(123);
+    for (auto& k : Ks) {
+        std::vector<std::vector<float>> initialCentroids = getRandomCentroids(data, k);
+
+        timesBasic.push_back(timePerIteration<BasicLloydIteration>(data, k, initialCentroids));
+        timesSIMD.push_back(timePerIteration<SIMDLloydIteration>(data, k, initialCentroids));
+        timesOMP.push_back(timePerIteration<ParallelLloydIteration>(data, k, initialCentroids));
+        timesOMPSIMD.push_back(timePerIteration<ParallelSIMDLloydIteration>(data, k, initialCentroids));
+    }
+
+    cout << "Ks: " << Ks << "\n";
+    cout << "timesBasic: " << timesBasic << "\n";
+    cout << "timesSIMD: " << timesSIMD << "\n";
+    cout << "timesOMP: " << timesOMP << "\n";
+    cout << "timesOMPSIMD: " << timesOMPSIMD << "\n";
+
+
+
+
+    /********************************************************************
+    *                                                                   *
+    *             benchmark on different number of threads              *
+    *                                                                   *
+    ********************************************************************/
+
+
+/*  std::vector<int> numThreads = { 1, 2, 3, 4 };
+    int K = 16;
+
+    std::vector<double> timesOMP;
+    std::vector<double> timesOMPSIMD;
+
+    rng::setSeed(123);
+    std::vector<std::vector<float>> initialCentroids = getRandomCentroids(data, K);
+
+//  cout << initialCentroids << "\n";
+
+    for (auto& k : numThreads) {
+
+        omp_set_num_threads(k);
+
+        timesOMP.push_back(timePerIteration<ParallelLloydIteration>(data, K, initialCentroids));
+        timesOMPSIMD.push_back(timePerIteration<ParallelSIMDLloydIteration>(data, K, initialCentroids));
+    }
+
+    cout << "num threads: " << numThreads << "\n";
+    cout << "timesOMP: " << timesOMP << "\n";
+    cout << "timesOMPSIMD: " << timesOMPSIMD << "\n";*/
+
+
+    return 0;
 }
